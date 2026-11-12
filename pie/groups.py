@@ -13,7 +13,11 @@ def income_quintile(hh: pd.DataFrame) -> pd.Series:
     eq_income = hh["FINCBTXM"] / np.sqrt(hh["FAM_SIZE"].clip(lower=1))
     order = eq_income.sort_values().index
     cum = hh.loc[order, "FINLWT21"].cumsum() / hh["FINLWT21"].sum()
-    q = np.minimum((cum * N_QUINTILES).astype(int) + 1, N_QUINTILES)
+    # A household belongs to quintile k if the weight up to and including it is
+    # within the first k/5 of the population. The tolerance keeps a household that
+    # lands exactly on a boundary (cum = 0.2) in the lower quintile despite
+    # floating-point round-off.
+    q = np.clip(np.ceil(cum * N_QUINTILES - 1e-9), 1, N_QUINTILES).astype(int)
     return q.reindex(hh.index)
 
 
