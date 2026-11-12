@@ -8,7 +8,7 @@ The prototype calculates a personal inflation rate for every household in the U.
 
 How did the inflation experienced by U.S. households differ across socioeconomic characteristics, and did those differences change from before COVID-19 to after it?
 
-## What `pie_demo.py` does
+## What the demo does
 
 1. Loads the CE Interview household files (`fmli*.csv`) for one survey year.
 2. Builds each household's spending shares over 16 CPI categories. Owner housing is valued as rental equivalence, as the CPI does.
@@ -33,7 +33,8 @@ Here H is households, I is items, T is months and G is groups.
 Requires Python 3.10+.
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt     # to run the demo
+pip install -e ".[dev]"             # to develop: adds pytest, hypothesis, ruff, mypy
 ```
 
 ### Get the data
@@ -47,10 +48,24 @@ The survey files are public but large (about 60 MB per year), so they are not in
 ## Run
 
 ```bash
-python3 pie_demo.py intrvw23           # full demo
-python3 pie_demo.py intrvw23 --quick   # skip the timing section
+python3 -m pie intrvw23                # full demo (python3 pie_demo.py intrvw23 also works)
+python3 -m pie intrvw23 --quick        # skip the timing section
+python3 -m pie intrvw23 --cpi my.csv   # use a different CPI file
 python3 feasibility_check.py intrvw23  # check that every needed variable exists
 ```
+
+If a CE file lacks a variable the demo needs, it stops with an error naming the
+missing variables instead of treating them as zero.
+
+## Develop
+
+```bash
+pytest                  # unit tests, including property-based tests of index-number axioms
+ruff check . && ruff format --check .
+mypy
+```
+
+GitHub Actions runs all three on every push and pull request (`.github/workflows/ci.yml`).
 
 ## Example results (2023 CE, June 2021 → June 2022)
 
@@ -80,6 +95,19 @@ Over December 2019 → December 2023 the rural–urban gap disappears (20.93% vs
 
 ## Repository contents
 
-- `pie_demo.py`: the prototype.
+- `pie/`: the prototype as a package.
+  - `categories.py`: the 16 CPI categories and the CE variables behind each.
+  - `cpi.py`: loads CPI-U category indexes from `data/cpi_u.csv` and computes price relatives.
+  - `loading.py`: reads CE FMLI files, checks required variables, builds household spending shares.
+  - `weights.py`: weighted quantiles; CPI-style (plutocratic) and democratic aggregate shares.
+  - `indexes.py`: household Laspeyres inflation; Laspeyres, Paasche, Fisher and Törnqvist formulas.
+  - `groups.py`: assigns households to comparison groups.
+  - `aggregation.py`: group averaging and the rural–urban basket-effect decomposition.
+  - `variance.py`: BRR standard errors from the 44 replicate weights.
+  - `benchmark.py`: times algorithms A1, A2 and A4.
+  - `cli.py`: the command-line demo.
+- `data/cpi_u.csv`: CPI-U category indexes (category, series ID, month, value).
+- `tests/`: pytest suite.
+- `pie_demo.py`: backward-compatible entry point that calls `pie.cli`.
 - `feasibility_check.py`: confirms the CE files contain every variable the project needs.
 - `docs/proposal.md`: the project proposal.
